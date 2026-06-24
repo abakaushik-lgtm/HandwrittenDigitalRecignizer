@@ -507,37 +507,35 @@ with tab_predictor:
                 """, unsafe_allow_html=True)
                 
             st.write("")
-            st.write("**Class Probabilities:**")
-            
-            # Render horizontal bar chart of probabilities
-            df_probs = pd.DataFrame({
-                'Digit': [str(i) for i in range(10)],
-                'Probability': probs * 100
-            })
-            
-            fig = px.bar(
-                df_probs,
-                x='Probability',
-                y='Digit',
-                orientation='h',
-                labels={'Probability': 'Confidence (%)', 'Digit': 'Digit '},
-                color='Probability',
-                color_continuous_scale='Blues',
-                text='Probability'
-            )
-            
-            fig.update_layout(
-                margin=dict(l=0, r=20, t=10, b=10),
-                height=320,
-                plot_bgcolor='rgba(0,0,0,0)',
-                paper_bgcolor='rgba(0,0,0,0)',
-                font_color='#f8fafc',
-                xaxis=dict(showgrid=True, gridcolor='rgba(255,255,255,0.05)', range=[0, 100]),
-                yaxis=dict(autorange="reversed"),
-                coloraxis_showscale=False
-            )
-            fig.update_traces(texttemplate='%{text:.1f}%', textposition='outside')
-            st.plotly_chart(fig, use_container_width=True)
+            st.markdown("**Class Probabilities — Digits 0–9:**")
+
+            # Build custom HTML bar chart — one row per digit
+            bars_html = '<div style="margin-top:12px;">'
+            for digit_idx in range(10):
+                p = float(probs[digit_idx]) * 100
+                is_pred = (digit_idx == predicted_digit)
+                bar_w  = min(p, 100)
+                # highlight predicted digit in accent color, others in muted blue
+                bar_col  = "#8b5cf6" if is_pred else "#3b82f6"
+                text_col = "#a78bfa" if is_pred else "#94a3b8"
+                weight   = "800" if is_pred else "400"
+                pct_str  = f"{min(p, 99.99):.2f}%" if p >= 99.995 else f"{p:.2f}%"
+                bars_html += f"""
+                <div style="display:flex; align-items:center; margin-bottom:7px; gap:10px;">
+                    <span style="width:18px; text-align:right; font-weight:{weight};
+                                 color:{text_col}; font-size:0.95rem;">{digit_idx}</span>
+                    <div style="flex:1; background:rgba(255,255,255,0.06);
+                                border-radius:999px; height:14px; overflow:hidden;">
+                        <div style="width:{bar_w:.2f}%; height:100%; border-radius:999px;
+                                    background:linear-gradient(90deg,{bar_col}99,{bar_col});
+                                    transition:width 0.5s ease;"></div>
+                    </div>
+                    <span style="width:52px; font-size:0.85rem; color:{text_col};
+                                 font-weight:{weight};">{pct_str}</span>
+                </div>"""
+                bars_html += "</div>"
+            st.markdown(bars_html, unsafe_allow_html=True)
+
         else:
             st.info("💡 **Awaiting Input**: Draw a digit on the canvas or upload an image in the left panel to trigger predictions.")
 
@@ -657,6 +655,50 @@ with tab_training:
 with tab_cnn:
     st.header("Inside the Brain of the Convolutional Neural Network")
     st.write("Understand feature extraction by visualizing CNN filter kernels and layer activation maps.")
+
+    # ── CNN Architecture Diagram ──────────────────────────────────────────
+    st.subheader("0. CNN Architecture")
+    st.write("Data flow through all layers from raw pixel input to digit classification output.")
+
+    arch_layers = [
+        ("Input",    "28 × 28 × 1",   "#334155", "#94a3b8"),
+        ("Conv2D",   "32 filters, 3×3, ReLU  →  28×28×32", "#4c1d95", "#a78bfa"),
+        ("MaxPool",  "2×2 stride  →  14×14×32",  "#1e3a5f", "#60a5fa"),
+        ("Conv2D",   "64 filters, 3×3, ReLU  →  14×14×64", "#4c1d95", "#a78bfa"),
+        ("MaxPool",  "2×2 stride  →  7×7×64",    "#1e3a5f", "#60a5fa"),
+        ("Flatten",  "3,136 units",               "#1e3a5f", "#38bdf8"),
+        ("Dense",    "128 neurons, ReLU",          "#14532d", "#34d399"),
+        ("Dropout",  "rate = 0.5",                "#44403c", "#fbbf24"),
+        ("Output",   "10 neurons (Softmax)",       "#7c2d12", "#f87171"),
+    ]
+
+    diagram_html = '<div style="display:flex; flex-direction:column; align-items:center; gap:0; padding:16px 0;">'
+    for i, (layer_name, detail, bg, fg) in enumerate(arch_layers):
+        diagram_html += f"""
+        <div style="
+            background:{bg};
+            border:1px solid {fg}44;
+            border-radius:10px;
+            padding:10px 28px;
+            min-width:340px;
+            text-align:center;
+            box-shadow:0 0 12px {fg}22;
+        ">
+            <span style="font-weight:800; font-size:1rem; color:{fg};">{layer_name}</span>
+            <span style="display:block; font-size:0.78rem; color:{fg}cc;
+                         margin-top:2px; letter-spacing:0.02em;">{detail}</span>
+        </div>"""
+        if i < len(arch_layers) - 1:
+            diagram_html += """
+        <div style="display:flex; flex-direction:column; align-items:center;
+                    height:32px; justify-content:center;">
+            <div style="width:2px; flex:1; background:rgba(255,255,255,0.15);"></div>
+            <div style="color:#64748b; font-size:1.1rem; line-height:1;">▼</div>
+        </div>"""
+    diagram_html += "</div>"
+    st.markdown(diagram_html, unsafe_allow_html=True)
+    st.markdown("<hr>", unsafe_allow_html=True)
+
     
     st.subheader("1. Convolutional Layer 1 Filters (First Layer Weights)")
     st.write("These 32 filters of shape $3 \\times 3$ learn simple patterns like edges, curves, and textures. Warm colors represent positive weights, cool colors represent negative weights.")
