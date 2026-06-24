@@ -1,0 +1,9 @@
+torch
+torchvision
+streamlit-drawable-canvas
+plotly
+scikit-learn
+pandas
+numpy
+matplotlib
+seaborn
